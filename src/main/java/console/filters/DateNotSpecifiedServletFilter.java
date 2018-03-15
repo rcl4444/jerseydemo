@@ -13,14 +13,14 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 格式化输出
- * */
+ */
 public class DateNotSpecifiedServletFilter implements ContainerResponseFilter {
 
 	@Override
 	public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
 			throws IOException {
 		responseContext.getEntityAnnotations();
-		if (JsonValue.class.isAssignableFrom(responseContext.getEntityClass())) {
+		if (responseContext.getEntityClass() != null && JsonValue.class.isAssignableFrom(responseContext.getEntityClass())) {
 			JsonValue entity = (JsonValue) responseContext.getEntity();
 			Map<String, Object> json = new HashMap<String, Object>();
 			json.put("status", responseContext.getStatus());

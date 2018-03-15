@@ -1,11 +1,13 @@
 package console;
 
+import java.security.Principal;
 import java.text.SimpleDateFormat;
 
-import javax.inject.Singleton;
-
+import org.axonframework.commandhandling.gateway.CommandGateway;
+import org.axonframework.eventhandling.EventBus;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.hk2.api.Factory;
+import org.glassfish.hk2.api.PerThread;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.jose4j.jwt.consumer.JwtConsumer;
@@ -18,10 +20,12 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.loginbox.dropwizard.mybatis.MybatisBundle;
 
+import console.data.PersonMapper;
 import console.filters.DateNotSpecifiedServletFilter;
 import console.repository.CustomerRepository;
 import console.repository.UserRepository;
 import console.resources.ActionsResource;
+import console.resources.PersonResource;
 import console.resources.SecuredResource;
 import console.resources.ValidInputResource;
 import console.validatebundle.BasicPrincipal;
@@ -33,9 +37,9 @@ import console.validatebundle.MyUserPrincipal;
 import console.validatebundle.OAuth2Authenticator;
 import console.validatebundle.OAuth2Authorizer;
 import console.validatebundle.OAuthPrincipal;
+import console.webapi.AxonBundle;
 import console.webapi.TestConfiguration;
 import io.dropwizard.Application;
-import io.dropwizard.ConfiguredBundle;
 import io.dropwizard.auth.AuthFilter;
 import io.dropwizard.auth.PolymorphicAuthDynamicFeature;
 import io.dropwizard.auth.PolymorphicAuthValueFactoryProvider;
@@ -45,11 +49,8 @@ import io.dropwizard.auth.oauth.OAuthCredentialAuthFilter;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import io.dropwizard.views.ViewBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.swagger.converter.ModelConverters;
-import io.swagger.jackson.ModelResolver;
 
 public class App extends Application<TestConfiguration> {
 	public static void main(String[] args) throws Exception {
@@ -63,28 +64,19 @@ public class App extends Application<TestConfiguration> {
 		}
 	};
 
+	private final AxonBundle<TestConfiguration> axonBundle = new AxonBundle<>();
+
 	@Override
 	public void initialize(Bootstrap<TestConfiguration> bootstrap) {
 
-		bootstrap.addBundle(new ConfiguredBundle<TestConfiguration>() {
+		bootstrap.addBundle(new SwaggerBundle<TestConfiguration>() {
 			@Override
-			public void initialize(Bootstrap<?> bp) {
-				bootstrap.addBundle(new ViewBundle<TestConfiguration>());
-				ModelConverters.getInstance().addConverter(new ModelResolver(bootstrap.getObjectMapper()));
-			}
-
-			@Override
-			public void run(TestConfiguration configuration, Environment environment) throws Exception {
-				new SwaggerBundle<TestConfiguration>() {
-					@Override
-					protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(
-							TestConfiguration configuration) {
-						return configuration.swagger;
-					}
-				}.run(configuration, environment);
+			protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(TestConfiguration configuration) {
+				return configuration.swagger;
 			}
 		});
 		bootstrap.addBundle(mybatisBundle);
+		bootstrap.addBundle(axonBundle);
 	}
 
 	@Override
@@ -99,47 +91,30 @@ public class App extends Application<TestConfiguration> {
 		environment.servlets().addFilter("CORS", CrossOriginFilter.class);
 		environment.jersey().register(new DateNotSpecifiedServletFilter());
 
-		environment.jersey().register(new ActionsResource());
+		environment.jersey().register(ActionsResource.class);
 		environment.jersey().register(SecuredResource.class);
 		environment.jersey().register(ValidInputResource.class);
+		environment.jersey().register(PersonResource.class);
 
 		final byte[] key = configuration.getJwtTokenSecret();
 
-		final JwtConsumer consumer = new JwtConsumerBuilder().setAllowedClockSkewInSeconds(30) // allow
-																								// some
-																								// leeway
-																								// in
-																								// validating
-																								// time
-																								// based
-																								// claims
-																								// to
-																								// account
-																								// for
-																								// clock
-																								// skew
-				.setRequireExpirationTime() // the JWT must have an expiration
-											// time
-				.setRequireSubject() // the JWT must have a subject claim
-				.setVerificationKey(new HmacKey(key)) // verify the signature
-														// with the public key
-				.setRelaxVerificationKeyValidation() // relaxes key length
-														// requirement
-				.build(); // create the JwtConsumer instance
-		//
-		// environment.jersey().register(new AuthDynamicFeature(
-		// new JwtAuthFilter.Builder<MyUserPrincipal>()
-		// .setJwtConsumer(consumer)
-		// .setRealm("realm")
-		// .setPrefix("Bearer")
-		// .setAuthenticator(new JWTAuthenticator())
-		// .buildAuthFilter()));
+		// create the JwtConsumer instance
+		final JwtConsumer consumer = new JwtConsumerBuilder()
+				/*
+				 * allow some leeway in validating time based claims to account
+				 * for clock skew
+				 */
+				.setAllowedClockSkewInSeconds(30)
+				/* the JWT must have an expiration time */
+				.setRequireExpirationTime()
+				/* the JWT must have a subject claim */
+				.setRequireSubject()
+				/* verify the signature with the public key */
+				.setVerificationKey(new HmacKey(key))
+				/* relaxes key length requirement */
+				.setRelaxVerificationKeyValidation().build();
 
-		// environment.jersey().register(new
-		// AuthValueFactoryProvider.Binder<>(Principal.class));
-		// environment.jersey().register(RolesAllowedDynamicFeature.class);
-
-		JwtAuthFilter jwtFilter = new JwtAuthFilter.Builder<MyUserPrincipal>().setJwtConsumer(consumer)
+		JwtAuthFilter<?> jwtFilter = new JwtAuthFilter.Builder<MyUserPrincipal>().setJwtConsumer(consumer)
 				.setCookieName("jwttoken").setAuthenticator(new JWTAuthenticator()).setAuthorizer(new JWTAuthorizer())
 				.setPrefix("jwttoken").buildAuthFilter();
 
@@ -149,23 +124,12 @@ public class App extends Application<TestConfiguration> {
 		AuthFilter<String, OAuthPrincipal> oauthFilter = new OAuthCredentialAuthFilter.Builder<OAuthPrincipal>()
 				.setAuthenticator(new OAuth2Authenticator()).setAuthorizer(new OAuth2Authorizer()).setPrefix("Bearer")
 				.buildAuthFilter();
-		PolymorphicAuthDynamicFeature feature = new PolymorphicAuthDynamicFeature<>(
+		PolymorphicAuthDynamicFeature<Principal> feature = new PolymorphicAuthDynamicFeature<>(
 				ImmutableMap.of(OAuthPrincipal.class, oauthFilter, BasicPrincipal.class, basicFilter,
 						MyUserPrincipal.class, jwtFilter));
 		AbstractBinder binder = new PolymorphicAuthValueFactoryProvider.Binder<>(
 				ImmutableSet.of(OAuthPrincipal.class, BasicPrincipal.class, MyUserPrincipal.class));
 
-		binder.bindFactory(new Factory<UserRepository>() {
-			@Override
-			public UserRepository provide() {
-				return new CustomerRepository();
-			}
-
-			@Override
-			public void dispose(UserRepository instance) {
-
-			}
-		}).to(UserRepository.class).in(Singleton.class);
 		// binder.bindFactory(new Factory<SecuredResource>(){
 		// @Override
 		// public SecuredResource provide(){
@@ -181,17 +145,73 @@ public class App extends Application<TestConfiguration> {
 
 		environment.jersey().register(feature);
 		environment.jersey().register(binder);
+		environment.jersey().register(RolesAllowedDynamicFeature.class);
+		environment.jersey().register(new MyBinder());
 
-		// environment.jersey().register(new AuthDynamicFeature(
-		// new OAuthCredentialAuthFilter.Builder<UserPrincipal>()
+		// 单独注册 OAuth2
+		// environment.jersey()
+		// .register(new AuthDynamicFeature(new
+		// OAuthCredentialAuthFilter.Builder<UserPrincipal>()
 		// .setAuthenticator(new OAuth2Authenticator())
 		// .setAuthorizer(new OAuth2Authorizer())
 		// .setPrefix("Bearer")
 		// .buildAuthFilter()));
-		environment.jersey().register(RolesAllowedDynamicFeature.class);
+		// environment.jersey().register(RolesAllowedDynamicFeature.class);
 		// //If you want to use @Auth to inject a custom Principal type into
 		// your resource
 		// environment.jersey().register(new
 		// AuthValueFactoryProvider.Binder<>(UserPrincipal.class));
+		// 单独注册jwt
+		// environment.jersey().register(new AuthDynamicFeature(
+		// new JwtAuthFilter.Builder<MyUserPrincipal>()
+		// .setJwtConsumer(consumer)
+		// .setRealm("realm")
+		// .setPrefix("Bearer")
+		// .setAuthenticator(new JWTAuthenticator())
+		// .buildAuthFilter()));
+		// environment.jersey().register(new
+		// AuthValueFactoryProvider.Binder<>(Principal.class));
+		// environment.jersey().register(RolesAllowedDynamicFeature.class);
 	}
+	
+    private final class MyBinder extends AbstractBinder {
+    	
+        @Override
+        protected void configure() {
+    		bind(CustomerRepository.class).to(UserRepository.class).in(PerThread.class);
+    		bindFactory(new Factory<EventBus>() {
+    			@Override
+    			public EventBus provide() {
+    				return axonBundle.getConfiguration().eventBus();
+    			}
+    
+    			@Override
+    			public void dispose(EventBus instance) {
+    
+    			}
+    		}).to(EventBus.class).in(PerThread.class);
+    		bindFactory(new Factory<CommandGateway>() {
+    			@Override
+    			public CommandGateway provide() {
+    				return axonBundle.getConfiguration().commandGateway();
+    			}
+    
+    			@Override
+    			public void dispose(CommandGateway instance) {
+    
+    			}
+    		}).to(CommandGateway.class).in(PerThread.class);
+    		bindFactory(new Factory<PersonMapper>() {
+    			@Override
+    			public PersonMapper provide() {
+    				return mybatisBundle.getSqlSessionFactory().openSession().getMapper(PersonMapper.class);
+    			}
+    
+    			@Override
+    			public void dispose(PersonMapper instance) {
+    
+    			}
+    		}).to(PersonMapper.class).in(PerThread.class);
+        }
+    }
 }

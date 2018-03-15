@@ -16,14 +16,13 @@ import org.jose4j.jwt.JwtClaims;
 import org.jose4j.keys.HmacKey;
 import org.jose4j.lang.JoseException;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 
 import console.validatebundle.MyUserPrincipal;
 import io.dropwizard.auth.Auth;
 import io.swagger.annotations.Api;
 
-@Api
+@Api(value="jwt授权码")
 @Path("/jwt")
 @Produces(APPLICATION_JSON)
 public class SecuredResource {
@@ -36,7 +35,7 @@ public class SecuredResource {
 
     @GET
     @Path("/generate-expired-token")
-    public Map<String, String> generateExpiredToken() {
+    public Map<String, String> generateExpiredToken() throws JoseException {
         final JwtClaims claims = new JwtClaims();
         claims.setExpirationTimeMinutesInTheFuture(20);
         claims.setSubject("good-guy");
@@ -49,12 +48,12 @@ public class SecuredResource {
         try {
             return singletonMap("token", jws.getCompactSerialization());
         }
-        catch (JoseException e) { throw Throwables.propagate(e); }
+        catch (JoseException e) { throw e; }
     }
 
     @GET
     @Path("/generate-valid-token")
-    public Map<String, String> generateValidToken() {
+    public Map<String, String> generateValidToken() throws JoseException {
         final JwtClaims claims = new JwtClaims();
         claims.setSubject("good-guy");
         claims.setExpirationTimeMinutesInTheFuture(30);
@@ -67,7 +66,7 @@ public class SecuredResource {
         try {
             return singletonMap("token", jws.getCompactSerialization());
         }
-        catch (JoseException e) { throw Throwables.propagate(e); }
+        catch (JoseException e) { throw e; }
     }
 
     @GET

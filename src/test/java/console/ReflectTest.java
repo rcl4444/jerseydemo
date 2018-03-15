@@ -40,6 +40,11 @@ public class ReflectTest {
 			IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
 
 		Map<Class<?>, Object> typeMap = new HashMap<Class<?>, Object>() {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 6276985327659207809L;
+
 			{
 				put(byte.class, (byte) 1);
 				put(Byte.class, (byte) 1);
@@ -131,8 +136,7 @@ public class ReflectTest {
 	public void test1() {
 		boolean bool = true;
 		Object abc = bool;
-		if(abc instanceof Boolean)
-		{
+		if (abc instanceof Boolean) {
 			System.out.print("123");
 		}
 		prepareMap(Entity.class);

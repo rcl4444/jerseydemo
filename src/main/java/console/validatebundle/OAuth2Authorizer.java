@@ -1,9 +1,5 @@
 package console.validatebundle;
 
-import java.util.Date;
-
-import org.apache.commons.lang3.StringUtils;
-
 import io.dropwizard.auth.Authorizer;
 
 public class OAuth2Authorizer implements Authorizer<OAuthPrincipal> {

@@ -5,7 +5,7 @@ jwtCookieAuth:
   sessionExpiryVolatile: PT20m
   sessionExpiryPersistent: P7d
 swagger:
-  resourcePackage: mytest.resources
+  resourcePackage: console.resources
 database:
   driverClass: org.h2.Driver
   user: sa

@@ -23,6 +23,8 @@ import console.validatebundle.BasicPrincipal;
 import console.validatebundle.OAuthPrincipal;
 import io.dropwizard.auth.Auth;
 
+/** 授权api
+ * */
 @Path("test")
 public class ActionsResource {
 

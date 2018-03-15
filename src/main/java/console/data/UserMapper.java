@@ -1,4 +1,4 @@
-package console.webapi;
+package console.data;
 
 import org.apache.ibatis.annotations.Select;
 
