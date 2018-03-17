@@ -13,7 +13,7 @@
             "stopOnEntry": false,
             "mainClass": "console.App",
             "projectName": "simplejerseydemo",
-            "args": ""
+            "args": "server config.yml"
         },
         {
             "type": "java",
