@@ -26,7 +26,7 @@ public class AxonBundle<T extends io.dropwizard.Configuration> implements Config
 	@Override
 	public void initialize(Bootstrap<?> bootstrap) {
 		this.configurer = DefaultConfigurer.defaultConfiguration();
-		configurer.registerCommandHandler(c -> new MyAnnotatedHandler());
+		configurer.registerCommandHandler(c -> new PersonCommandHandler());
 		EventHandlingConfiguration ehConfiguration = new EventHandlingConfiguration()
 				.registerEventHandler(conf -> new MyEventHandlerClass());
 
