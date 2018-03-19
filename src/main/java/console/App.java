@@ -3,24 +3,22 @@ package console;
 import java.security.Principal;
 import java.text.SimpleDateFormat;
 
-import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.eventhandling.EventBus;
-import org.eclipse.jetty.servlets.CrossOriginFilter;
-import org.glassfish.hk2.api.Factory;
-import org.glassfish.hk2.api.PerThread;
-import org.glassfish.hk2.api.ServiceLocator;
-import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
-import org.glassfish.jersey.servlet.ServletContainer;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtConsumerBuilder;
-import org.jose4j.keys.HmacKey;
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.github.toastshaman.dropwizard.auth.jwt.JwtAuthFilter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.loginbox.dropwizard.mybatis.MybatisBundle;
+
+import org.axonframework.commandhandling.gateway.CommandGateway;
+import org.axonframework.eventhandling.EventBus;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.glassfish.hk2.api.Factory;
+import org.glassfish.hk2.api.PerThread;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
+import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.jwt.consumer.JwtConsumerBuilder;
+import org.jose4j.keys.HmacKey;
 
 import console.data.PersonMapper;
 import console.filters.DateNotSpecifiedServletFilter;
@@ -148,7 +146,6 @@ public class App extends Application<TestConfiguration> {
 		environment.jersey().register(feature);
 		environment.jersey().register(binder);
 		environment.jersey().register(RolesAllowedDynamicFeature.class);
-		ServiceLocator serviceLocator = ((ServletContainer) environment.getJerseyServletContainer()).getApplicationHandler().getServiceLocator();
 		environment.jersey().register(new MyBinder());
 
 		// 单独注册 OAuth2

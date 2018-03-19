@@ -4,7 +4,12 @@ import org.axonframework.config.Configuration;
 import org.axonframework.config.Configurer;
 import org.axonframework.config.DefaultConfigurer;
 import org.axonframework.config.EventHandlingConfiguration;
+import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.jersey.servlet.ServletContainer;
+import org.glassfish.jersey.servlet.ServletProperties;
 
+import console.data.PersonMapper;
+import console.person.PersonCommandHandler;
 import console.person.PersonEventHandler;
 import io.dropwizard.ConfiguredBundle;
 import io.dropwizard.setup.Bootstrap;
@@ -23,6 +28,9 @@ public class AxonBundle<T extends io.dropwizard.Configuration> implements Config
 	@Override
 	public void run(T configuration, Environment environment) throws Exception {
 		this.configuration = this.configurer.buildConfiguration();
+		ServiceLocator serviceLocator = ((ServletContainer) environment.getJerseyServletContainer()).getApplicationHandler().getServiceLocator();
+		serviceLocator.create(PersonMapper.class);
+		environment.getApplicationContext().getAttribute(ServletProperties.SERVICE_LOCATOR);
 	}
 
 	@Override
