@@ -18,8 +18,8 @@ import io.dropwizard.setup.Environment;
 public class AxonBundle<T extends io.dropwizard.Configuration> implements ConfiguredBundle<T> {
 
 	protected Configurer configurer;
-
 	protected Configuration configuration;
+	protected ServiceLocator serviceLocator;
 
 	public Configuration getConfiguration() {
 		return this.configuration;
@@ -27,21 +27,21 @@ public class AxonBundle<T extends io.dropwizard.Configuration> implements Config
 
 	@Override
 	public void run(T configuration, Environment environment) throws Exception {
-		this.configuration = this.configurer.buildConfiguration();
-		ServiceLocator serviceLocator = ((ServletContainer) environment.getJerseyServletContainer()).getApplicationHandler().getServiceLocator();
-		serviceLocator.create(PersonMapper.class);
-		environment.getApplicationContext().getAttribute(ServletProperties.SERVICE_LOCATOR);
+		this.serviceLocator = (ServiceLocator) environment.getApplicationContext()
+				.getAttribute(ServletProperties.SERVICE_LOCATOR);
 	}
 
 	@Override
 	public void initialize(Bootstrap<?> bootstrap) {
 		this.configurer = DefaultConfigurer.defaultConfiguration();
-		// configurer.registerCommandHandler(c -> new PersonCommandHandler());
-		// EventHandlingConfiguration ehConfiguration = new EventHandlingConfiguration()
-		// 		.registerEventHandler(conf -> new PersonEventHandler());
+		this.configuration = this.configurer.buildConfiguration();
+		configurer.registerCommandHandler(
+				c -> new PersonCommandHandler(this.serviceLocator.create(PersonMapper.class), c.eventBus()));
+		EventHandlingConfiguration ehConfiguration = new EventHandlingConfiguration()
+				.registerEventHandler(conf -> new PersonEventHandler(this.serviceLocator.create(PersonMapper.class)));
 
-		// // the module needs to be registered with the Axon Configuration
-		// configurer.registerModule(ehConfiguration);
+		// the module needs to be registered with the Axon Configuration
+		this.configurer.registerModule(ehConfiguration);
 	}
 
 }

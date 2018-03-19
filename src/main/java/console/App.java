@@ -51,6 +51,7 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import net.winterly.dropwizard.hk2bundle.HK2Bundle;
 
 public class App extends Application<TestConfiguration> {
 	public static void main(String[] args) throws Exception {
@@ -77,6 +78,7 @@ public class App extends Application<TestConfiguration> {
 		});
 		bootstrap.addBundle(mybatisBundle);
 		bootstrap.addBundle(axonBundle);
+		bootstrap.addBundle(HK2Bundle.builder().build());
 	}
 
 	@Override
